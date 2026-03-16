@@ -28,7 +28,7 @@ type Broker struct {
 
 func NewBroker() *Broker {
 	return &Broker{
-		clients: make(map[chan LogEvent]struct{})
+		clients: make(map[chan LogEvent]struct{}),
 	}
 }
 
@@ -42,7 +42,7 @@ func (b *Broker) RemoveClient (ch chan LogEvent) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	delete(b.clients, ch)
-	close(ch)
+	// close(ch)
 }
 
 func (b *Broker) Broadcast(event LogEvent) {
@@ -62,7 +62,7 @@ func isHighSeverity(level string) bool {
 	return upper == "ERROR" || upper == "CRITICAL"
 }
 
-func handleConnection(conn net.Conn) {
+func handleConnection(conn net.Conn, broker *Broker) {
 	defer conn.Close()
 
 	log.Printf("client connected: %s", conn.RemoteAddr())
@@ -111,7 +111,7 @@ func startTCPServer(adress string, broker *Broker) error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Prinf("failed to accept tcp connection: %v", err)
+			log.Printf("failed to accept tcp connection: %v", err)
 			continue
 		}
 
@@ -125,14 +125,14 @@ func eventsHandler(broker *Broker) http.HandlerFunc {
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
 
-		flisher, ok := w.(http.Flusher)
+		flusher, ok := w.(http.Flusher)
 		if !ok {
 			http.Error(w, "streaming unsupported", http.StatusInternalServerError)
 			return
 		}
 
 		clientChan := make(chan LogEvent, 16)
-		broker.AddClient(clienttChan)
+		broker.AddClient(clientChan)
 		defer broker.RemoveClient(clientChan)
 
 		log.Printf("sse client connected: %s", r.RemoteAddr)
@@ -147,12 +147,12 @@ func eventsHandler(broker *Broker) http.HandlerFunc {
 			case event := <- clientChan:
 				data, err := json.Marshal(event)
 				if err != nil {
-					log.Prinf("failed to marshal sse event: %v", err)
+					log.Printf("failed to marshal sse event: %v", err)
 					continue
 				}
 				_, err = fmt.Fprintf(w, "data: %s\n\n", data)
 				if err != nil {
-					log.Prinf("failed to write sse event: %v", err)
+					log.Printf("failed to write sse event: %v", err)
 					return
 				}
 
@@ -162,51 +162,67 @@ func eventsHandler(broker *Broker) http.HandlerFunc {
 	}
 }
 
-func startHTTPServer(adress string, broker *Broker) error {
+// func startHTTPServer(adress string, broker *Broker) error {
+// 	mux := http.NewServeMux()
+//
+// 	mux.HandleFunc("/events", eventsHandler(broker))
+// 	fileServer := http.FileServer(http.Dir("../frontend"))
+// 	mux.Handle("/", fileServer)
+// 	// mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+// 	// 	http.ServeFile(w, r, "../frontend/index.html")
+// 	// }) 
+// 	//
+// 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+// 		w.Write([]byte("ok"))
+// 	})
+// 	log.Printf("http server listening on %s", adress)
+// 	return http.ListenAndServe(adress, mux)
+// }
+
+
+func startHTTPServer(address string, broker *Broker) error {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/events", eventsHandler(broker))
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "../frontend/index.html")
-	}) 
 
-	log.Printf("http server listening on %s", adress)
-	return http.ListenAndServe(adress, mux)
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		http.ServeFile(w, r, "../frontend/index.html")
+	})
+
+	mux.HandleFunc("/main.js", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		http.ServeFile(w, r, "../frontend/main.js")
+	})
+
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("ok"))
+	})
+
+	log.Printf("http server listening on %s", address)
+	return http.ListenAndServe(address, mux)
 }
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
 	broker := NewBroker()
-	adress := "127.0.0.1:9000"
+	adressIn := "127.0.0.1:9000"
+	adressOut := "127.0.0.1:9001"
 	
 	go func() {
-		if err := startHTTPServer(adress, Broker); err != nil {
+		if err := startTCPServer(adressIn, broker); err != nil {
 			log.Printf("tcp server error: %v", err)
 			os.Exit(1)
 		}
 	}()
 
-	if err := startHTTPServer(adress, broker); err != nil {
-		log.Prinf("http server error: %v", err)
+	if err := startHTTPServer(adressOut, broker); err != nil {
+		log.Printf("http server error: %v", err)
 		os.Exit(1)
 	}
 }
 
-// 	listener, err := net.Listen("tcp", adress)
-// 	if err != nil {
-// 		log.Fatalf("failed to listen on %s: %v", adress, err)
-// 	}
-// 	defer listener.Close()
-//
-// 	log.Printf("listening on %s", adress)
-//
-// 	for {
-// 		conn, err := listener.Accept()
-// 		if err != nil {
-// 			log.Printf("failed to accept connection: %v", err)
-// 			continue
-// 		}
-// 		go handleConnection(conn)
-// 	}
-// }

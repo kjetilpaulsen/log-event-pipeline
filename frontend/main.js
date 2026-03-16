@@ -4,12 +4,15 @@ const maxEvents = 50;
 
 function addEventCard(event) {
     const card = document.createElement("div");
+    card.className = "event";
+
+    const meta = document.createElement("div");
     meta.className = "meta";
     meta.innerHTML = `
-    <span class="level">${event.level}</span>
-    | ${event.timestamp}
-    | ${event.app_name}
-    | ${event.function_name}
+        <span class="level">${event.level}</span>
+        | ${event.timestamp}
+        | ${event.app_name}
+        | ${event.function_name}
     `;
 
     const message = document.createElement("div");
@@ -40,4 +43,3 @@ source.onmessage = function (evt) {
 source.onerror = function () {
     statusEl.textContent = "Disconnected. Retrying";
 };
-
