@@ -63,6 +63,7 @@ func isHighSeverity(level string) bool {
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
+
 	log.Printf("client connected: %s", conn.RemoteAddr())
 
 	scanner := bufio.NewScanner(conn)
@@ -84,6 +85,10 @@ func handleConnection(conn net.Conn) {
 			event.FunctionName,
 			event.Message,
 		)
+
+		if isHighSeverity(event.Level) {
+			broker.Broadcast(event)
+		}
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -91,6 +96,26 @@ func handleConnection(conn net.Conn) {
 	}
 
 	log.Printf("client disconnected: %s", conn.RemoteAddr())
+}
+
+func startTCPServer(adress string, broker *Broker) error {
+	listener, err := net.Listen("tcp", adress)
+	if err != nil {
+		return fmt.Errorf("failed to listen on %s: %w", adress, err)
+	}
+	defer listener.Close()
+
+	log.Printf("tcp server listening on %s", adress)
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Prinf("failed to accept tcp connection: %v", err)
+			continue
+		}
+
+		go handleConnection(conn, broker)
+	}
 }
 
 func main() {
