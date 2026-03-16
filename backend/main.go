@@ -175,22 +175,38 @@ func startHTTPServer(adress string, broker *Broker) error {
 }
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
+	broker := NewBroker()
 	adress := "127.0.0.1:9000"
-
-	listener, err := net.Listen("tcp", adress)
-	if err != nil {
-		log.Fatalf("failed to listen on %s: %v", adress, err)
-	}
-	defer listener.Close()
-
-	log.Printf("listening on %s", adress)
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Printf("failed to accept connection: %v", err)
-			continue
+	
+	go func() {
+		if err := startHTTPServer(adress, Broker); err != nil {
+			log.Printf("tcp server error: %v", err)
+			os.Exit(1)
 		}
-		go handleConnection(conn)
+	}()
+
+	if err := startHTTPServer(adress, broker); err != nil {
+		log.Prinf("http server error: %v", err)
+		os.Exit(1)
 	}
 }
+
+// 	listener, err := net.Listen("tcp", adress)
+// 	if err != nil {
+// 		log.Fatalf("failed to listen on %s: %v", adress, err)
+// 	}
+// 	defer listener.Close()
+//
+// 	log.Printf("listening on %s", adress)
+//
+// 	for {
+// 		conn, err := listener.Accept()
+// 		if err != nil {
+// 			log.Printf("failed to accept connection: %v", err)
+// 			continue
+// 		}
+// 		go handleConnection(conn)
+// 	}
+// }
