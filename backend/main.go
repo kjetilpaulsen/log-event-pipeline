@@ -162,6 +162,18 @@ func eventsHandler(broker *Broker) http.HandlerFunc {
 	}
 }
 
+func startHTTPServer(adress string, broker *Broker) error {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/events", eventsHandler(broker))
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "../frontend/index.html")
+	}) 
+
+	log.Printf("http server listening on %s", adress)
+	return http.ListenAndServe(adress, mux)
+}
+
 func main() {
 	adress := "127.0.0.1:9000"
 
