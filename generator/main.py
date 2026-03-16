@@ -78,7 +78,7 @@ def loop(runtime: Runtime) -> int:
         for _ in range(runtime.logs):
             event = generate(runtime)
             payload = json.dumps(asdict(event)) + "\n"
-            sock.sendall(payload.encode("uft-8"))
+            sock.sendall(payload.encode("utf-8"))
 
             logger.info("Sent event: %s", event.message)
             if runtime.dev_mode:
