@@ -205,3 +205,41 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ---- Node / frontend ----
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.npm/
+frontend/.cache/
+
+# ---- Go / backend ----
+backend/bin/
+backend/coverage.out
+backend/*.test
+
+# ---- Logs / runtime files ----
+*.log
+*.pid
+*.out
+
+# ---- Env files ----
+.env
+.env.*
+!.env.example
