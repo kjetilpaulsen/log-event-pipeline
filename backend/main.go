@@ -162,24 +162,6 @@ func eventsHandler(broker *Broker) http.HandlerFunc {
 	}
 }
 
-// func startHTTPServer(adress string, broker *Broker) error {
-// 	mux := http.NewServeMux()
-//
-// 	mux.HandleFunc("/events", eventsHandler(broker))
-// 	fileServer := http.FileServer(http.Dir("../frontend"))
-// 	mux.Handle("/", fileServer)
-// 	// mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-// 	// 	http.ServeFile(w, r, "../frontend/index.html")
-// 	// }) 
-// 	//
-// 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-// 		w.Write([]byte("ok"))
-// 	})
-// 	log.Printf("http server listening on %s", adress)
-// 	return http.ListenAndServe(adress, mux)
-// }
-
-
 func startHTTPServer(address string, broker *Broker) error {
 	mux := http.NewServeMux()
 
