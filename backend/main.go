@@ -20,6 +20,47 @@ type LogEvent struct {
 	Message string `json:"message"`
 }
 
+type Broker struct {
+	mu sync.Mutex
+	clients map[chan LogEvent]struct{}
+}
+
+func NewBroker() *Broker {
+	return &Broker{
+		clients: make(map[chan LogEvent]struct{})
+	}
+}
+
+func (b *Broker) AddClient(ch chan LogEvent) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.clients[ch] = struct{}{}
+}
+
+func (b *Broker) RemoveClient (ch chan LogEvent) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	delete(b.clients, ch)
+	close(ch)
+}
+
+func (b *Broker) Broadcast(event LogEvent) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	for ch := range b.clients {
+		select {
+		case ch <- event:
+		default:
+		}
+	}
+}
+
+func isHighSeverity(level string) bool {
+	upper := strings.ToUpper(level)
+	return upper == "ERROR" || upper == "CRITICAL"
+}
+
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 	log.Printf("client connected: %s", conn.RemoteAddr())
