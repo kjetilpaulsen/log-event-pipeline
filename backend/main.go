@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -115,6 +116,49 @@ func startTCPServer(adress string, broker *Broker) error {
 		}
 
 		go handleConnection(conn, broker)
+	}
+}
+
+func eventsHandler(broker *Broker) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+
+		flisher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+			return
+		}
+
+		clientChan := make(chan LogEvent, 16)
+		broker.AddClient(clienttChan)
+		defer broker.RemoveClient(clientChan)
+
+		log.Printf("sse client connected: %s", r.RemoteAddr)
+
+		ctx := r.Context()
+		for {
+			select {
+			case <- ctx.Done():
+				log.Printf("sse client disconnected: %s", r.RemoteAddr)
+				return
+
+			case event := <- clientChan:
+				data, err := json.Marshal(event)
+				if err != nil {
+					log.Prinf("failed to marshal sse event: %v", err)
+					continue
+				}
+				_, err = fmt.Fprintf(w, "data: %s\n\n", data)
+				if err != nil {
+					log.Prinf("failed to write sse event: %v", err)
+					return
+				}
+
+				flusher.Flush()
+			}
+		}
 	}
 }
 
