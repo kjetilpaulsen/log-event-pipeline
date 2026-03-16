@@ -5,6 +5,10 @@ import (
 	"encoding/json"
 	"log"
 	"net"
+	"net/http"
+	"os"
+	"strings"
+	"sync"
 )
 
 type LogEvent struct {
