@@ -30,8 +30,8 @@ It provides:
 
 ```bash
 git clone ...
-cd log-event-pipeline
-go run ./cmd/server
+cd log-event-pipeline/backend
+go run .
 ```
 
 Open your browser at `http://127.0.0.1:9001` to see the dashboard.
@@ -83,19 +83,21 @@ The pipeline has three components:
 ### Setup
 
 ```bash
-git clone https://github.com/<your-username>/log-event-pipeline.git
+git clone https://github.com/kjetilpaulsen/log-event-pipeline.git
 cd log-event-pipeline
 ```
 
-For the Go server, no additional dependencies are needed — the server uses only the standard library:
+For the Go server, no additional dependencies are needed — the server uses only the standard library, from root:
 
 ```bash
+cd backend
 go build ./...
 ```
 
-For the frontend (if you want to install dev tooling or a bundler):
+For the frontend (if you want to install dev tooling or a bundler), from root:
 
 ```bash
+cd frontend
 npm install
 ```
 
@@ -104,14 +106,7 @@ npm install
 **Start the server:**
 
 ```bash
-go run ./cmd/server
-```
-
-Or build and run the binary:
-
-```bash
-go build -o server ./cmd/server
-./server
+go run .
 ```
 
 The server listens on two addresses by default:
@@ -138,9 +133,10 @@ curl -N http://127.0.0.1:9001/events
 
 A Python script (`main.py`) is included to generate and send random log events to the TCP server. It requires no additional packages beyond the standard library.
 
-**Run with defaults (10 000 events, sent as fast as possible):**
+**Run with defaults (10 000 events, sent as fast as possible), from root:**
 
 ```bash
+cd generator
 python main.py
 ```
 
