@@ -154,7 +154,7 @@ func handleConnection(conn net.Conn, broker *Broker, influx *InfluxWriter) {
 	log.Printf("client disconnected: %s", conn.RemoteAddr())
 }
 
-func startTCPServer(adress string, broker *Broker) error {
+func startTCPServer(adress string, broker *Broker, influx *InfluxWriter) error {
 	listener, err := net.Listen("tcp", adress)
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", adress, err)
@@ -170,7 +170,7 @@ func startTCPServer(adress string, broker *Broker) error {
 			continue
 		}
 
-		go handleConnection(conn, broker)
+		go handleConnection(conn, broker, influx)
 	}
 }
 
