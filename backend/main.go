@@ -14,6 +14,7 @@ import (
 	"time"
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
+	"github.com/influxdata/influxdb-client-go/v2/api"
 )
 
 type LogEvent struct {
@@ -67,12 +68,12 @@ func isHighSeverity(level string) bool {
 }
 
 type InfluxWriter struct {
-	writeAPI influxdb2.WriteAPIBlocking
+	writeAPI api.WriteAPIBlocking
 	org string
 	bucket string
 }
 
-func InfluxWriterFromEnv() (*InfluxWriter, error) {
+func NewInfluxWriterFromEnv() (*InfluxWriter, error) {
 	url := os.Getenv("INFLUX_URL")
 	token:= os.Getenv("INFLUX_TOKEN")
 	org := os.Getenv("INFLUX_ORG")
@@ -247,11 +248,19 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
 	broker := NewBroker()
+	influx, err := NewInfluxWriterFromEnv()
+	if err != nil {
+		log.Printf("influxdb disable: %v", err)
+		influx = nil
+	} else {
+		log.Printf("influxdb enabled")
+	}
+
 	adressIn := "127.0.0.1:9000"
 	adressOut := "127.0.0.1:9001"
 	
 	go func() {
-		if err := startTCPServer(adressIn, broker); err != nil {
+		if err := startTCPServer(adressIn, broker, influx); err != nil {
 			log.Printf("tcp server error: %v", err)
 			os.Exit(1)
 		}
