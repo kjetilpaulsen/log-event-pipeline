@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"log"
 	"net"
 	"net/http"
@@ -60,6 +61,29 @@ func (b *Broker) Broadcast(event LogEvent) {
 func isHighSeverity(level string) bool {
 	upper := strings.ToUpper(level)
 	return upper == "ERROR" || upper == "CRITICAL"
+}
+
+type InfluxWriter struct {
+	writeAPI influxdb2.WriteAPIBlocking
+	org string
+	bucket string
+}
+
+func InfluxWriterFromEnv() (*InfluxWriter, error) {
+	url := os.Getenv("INFLUX_URL")
+	token:= os.Getenv("INFLUX_TOKEN")
+	org := os.Getenv("INFLUX_ORG")
+	bucket := os.Getenv("INFLUX_BUCKET")
+
+	if url =="" || token =="" || org=="" || bucket == "" {
+		return nil, fmt.Errorf("missing one or more required env vars")
+	}
+	client := influxdb2.NewClient(url, token)
+	return &InfluxWriter{
+		writeAPI: client.WriteAPIBlocking(org, bucket),
+		org: org,
+		bucket: bucket,
+	}, nil
 }
 
 func handleConnection(conn net.Conn, broker *Broker) {
