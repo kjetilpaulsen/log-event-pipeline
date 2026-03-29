@@ -2,15 +2,18 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
-	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
+	"time"
+
+	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 )
 
 type LogEvent struct {
@@ -86,7 +89,29 @@ func InfluxWriterFromEnv() (*InfluxWriter, error) {
 	}, nil
 }
 
-func handleConnection(conn net.Conn, broker *Broker) {
+func (w *InfluxWriter) WriteEvent(ctx context.Context, event LogEvent) error {
+	ts, err := time.Parse(time.RFC3339Nano, event.Timestamp)
+	if err != nil {
+		ts = time.Now().UTC()
+	}
+
+	point := influxdb2.NewPoint(
+		"logs",
+		map[string]string{
+			"level": strings.ToUpper(event.Level),
+			"app_name": event.AppName,
+			"logger_name": event.LoggerName,
+			"function_name": event.FunctionName,
+		},
+		map[string]interface{}{
+			"message": event.Message,
+		},
+		ts,
+	)
+	return w.writeAPI.WritePoint(ctx, point)
+}
+
+func handleConnection(conn net.Conn, broker *Broker, influx *InfluxWriter) {
 	defer conn.Close()
 
 	log.Printf("client connected: %s", conn.RemoteAddr())
@@ -110,6 +135,12 @@ func handleConnection(conn net.Conn, broker *Broker) {
 			event.FunctionName,
 			event.Message,
 		)
+
+		if influx != nil {
+			if err := influx.WriteEvent(context.Background(), event); err != nil {
+				log.Printf("failed to write event to influxdb: %v", err)
+			}
+		}
 
 		if isHighSeverity(event.Level) {
 			broker.Broadcast(event)
